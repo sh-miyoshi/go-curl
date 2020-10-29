@@ -1,6 +1,10 @@
 package option
 
 import (
+	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/spf13/pflag"
 )
 
@@ -20,6 +24,21 @@ func Init() (*Option, error) {
 
 	if help {
 		return nil, ErrHelp
+	}
+
+	args := pflag.Args()
+	if len(args) == 0 {
+		return nil, fmt.Errorf("no URL specified")
+	}
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "http://") && !strings.HasPrefix(arg, "https://") {
+			arg = "http://" + arg
+		}
+		u, err := url.Parse(arg)
+		if err != nil {
+			return nil, err
+		}
+		opt.URLs = append(opt.URLs, *u)
 	}
 
 	return opt, nil

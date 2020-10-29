@@ -1,6 +1,9 @@
 package option
 
-import "errors"
+import (
+	"errors"
+	"net/url"
+)
 
 // Option ...
 type Option struct {
@@ -10,6 +13,8 @@ type Option struct {
 	Insecure bool
 	Redirect bool
 	Silent   bool
+
+	URLs []url.URL
 }
 
 var (

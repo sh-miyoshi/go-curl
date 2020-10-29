@@ -14,7 +14,7 @@ type Option struct {
 	Redirect bool
 	Silent   bool
 
-	URLs []url.URL
+	URL url.URL
 }
 
 var (

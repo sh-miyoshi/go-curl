@@ -9,6 +9,8 @@ import (
 )
 
 func main() {
+	// TODO output
+
 	opt, err := option.Init()
 	if err != nil {
 		if err == option.ErrHelp {
@@ -19,8 +21,9 @@ func main() {
 		return
 	}
 
-	client := http.NewClient(opt)
-	for _, u := range opt.URLs {
-		client.Request(u)
+	// TODO vaildate opt
+
+	if err := http.Request(opt); err != nil {
+		fmt.Printf("Failed to request server: %v", err)
 	}
 }

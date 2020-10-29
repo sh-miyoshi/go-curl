@@ -29,17 +29,18 @@ func Init() (*Option, error) {
 	args := pflag.Args()
 	if len(args) == 0 {
 		return nil, fmt.Errorf("no URL specified")
+	} else if len(args) >= 2 {
+		return nil, fmt.Errorf("Too many args. Expect 1 url but got %d", len(args))
 	}
-	for _, arg := range args {
-		if !strings.HasPrefix(arg, "http://") && !strings.HasPrefix(arg, "https://") {
-			arg = "http://" + arg
-		}
-		u, err := url.Parse(arg)
-		if err != nil {
-			return nil, err
-		}
-		opt.URLs = append(opt.URLs, *u)
+
+	if !strings.HasPrefix(args[0], "http://") && !strings.HasPrefix(args[0], "https://") {
+		args[0] = "http://" + args[0]
 	}
+	u, err := url.Parse(args[0])
+	if err != nil {
+		return nil, err
+	}
+	opt.URL = *u
 
 	return opt, nil
 }

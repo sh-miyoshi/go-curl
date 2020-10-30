@@ -2,7 +2,9 @@ package http
 
 import (
 	"crypto/tls"
+	"fmt"
 	nethttp "net/http"
+	"strings"
 
 	"github.com/sh-miyoshi/go-curl/pkg/option"
 )
@@ -26,13 +28,25 @@ func Request(opt *option.Option) error {
 		Transport: tr,
 	}
 
+	if !opt.Redirect {
+		client.CheckRedirect = func(req *nethttp.Request, via []*nethttp.Request) error {
+			return nethttp.ErrUseLastResponse
+		}
+	}
+
 	// TODO parse body
 
 	req, err := nethttp.NewRequest(opt.Method, opt.URL.String(), nil)
 	if err != nil {
 		return err
 	}
-	// TODO add header
+	for _, header := range opt.Header {
+		d := strings.Split(header, ":")
+		if len(d) != 2 {
+			return fmt.Errorf("Invalid header data: %s", header)
+		}
+		req.Header.Add(strings.Trim(d[0], " "), strings.Trim(d[1], " "))
+	}
 
 	// TODO dump request dump, _ := httputil.DumpRequest(req, false)
 	res, err := client.Do(req)

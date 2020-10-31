@@ -34,7 +34,10 @@ func Request(opt *option.Option) error {
 		}
 	}
 
-	// TODO parse body
+	// TODO remove \r\n
+	// TODO set body
+	// get content-length
+	// use io.Pipe()
 
 	req, err := nethttp.NewRequest(opt.Method, opt.URL.String(), nil)
 	if err != nil {

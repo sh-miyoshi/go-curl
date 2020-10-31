@@ -3,7 +3,9 @@ package http
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	nethttp "net/http"
+	"os"
 	"strings"
 
 	"github.com/sh-miyoshi/go-curl/pkg/option"
@@ -11,9 +13,7 @@ import (
 
 // Request ...
 func Request(opt *option.Option) error {
-	tlsConf := tls.Config{
-		ServerName: opt.URL.Host,
-	}
+	tlsConf := tls.Config{}
 
 	if opt.Insecure {
 		tlsConf.InsecureSkipVerify = true
@@ -58,7 +58,26 @@ func Request(opt *option.Option) error {
 	}
 	defer res.Body.Close()
 
-	// TODO show result
+	var body io.Reader
 
-	return nil
+	// show result
+	writer := os.Stdout
+	body = res.Body
+
+	if opt.Output != "" {
+		// TODO /dev/null, NUL
+		// Output to file
+		var err error
+		writer, err = os.Create(opt.Output)
+		if err != nil {
+			return err
+		}
+		defer writer.Close()
+		body = io.TeeReader(res.Body, newWriter(res.ContentLength))
+	}
+
+	written, err := io.Copy(writer, body)
+	fmt.Printf("\nFinished wrote %d bytes\n", written)
+
+	return err
 }

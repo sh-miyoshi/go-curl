@@ -20,6 +20,7 @@ func Init() (*Option, error) {
 	pflag.BoolVarP(&opt.Insecure, "insecure", "k", false, "Allow insecure server connections when using SSL")
 	pflag.BoolVarP(&opt.Redirect, "location", "L", false, "Follow redirects")
 	pflag.BoolVarP(&opt.Silent, "silent", "s", false, "Silent mode")
+	pflag.StringVarP(&opt.Output, "output", "o", "", "Write to file instead of stdout")
 	pflag.Parse()
 
 	if help {

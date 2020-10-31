@@ -13,6 +13,7 @@ type Option struct {
 	Insecure bool
 	Redirect bool
 	Silent   bool
+	Output   string
 
 	URL url.URL
 }

@@ -73,11 +73,13 @@ func Request(opt *option.Option) error {
 			return err
 		}
 		defer writer.Close()
-		body = io.TeeReader(res.Body, newWriter(res.ContentLength))
+		body = io.TeeReader(res.Body, newWriter(res.ContentLength, opt.Silent))
 	}
 
-	written, err := io.Copy(writer, body)
-	fmt.Printf("\nFinished wrote %d bytes\n", written)
+	_, err = io.Copy(writer, body)
+	if opt.Output != "" && !opt.Silent {
+		fmt.Println("")
+	}
 
 	return err
 }

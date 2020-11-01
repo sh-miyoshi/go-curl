@@ -37,12 +37,11 @@ func newClient(opt *option.Option) *nethttp.Client {
 	return client
 }
 
-func makeBody(data []string) (io.Reader, int64) {
+func makeBody(data []string) (io.Reader, error) {
 	if data == nil || len(data) == 0 {
-		return nil, 0
+		return nil, nil
 	}
 
-	var contentLen int64
 	buf := new(bytes.Buffer)
 	for _, d := range data {
 		if d == "" {
@@ -50,31 +49,42 @@ func makeBody(data []string) (io.Reader, int64) {
 		}
 		if d[0] == '@' {
 			// TODO remove \r\n
-			// get content-length
-			// use io.Pipe()
-			// read file
-			// TODO
+			fname := d[1:]
+			f, err := os.Open(fname)
+			if err != nil {
+				return nil, err
+			}
+			pr, pw := io.Pipe()
+
+			go func() {
+				defer pw.Close()
+				if _, err := io.Copy(pw, f); err != nil {
+					fmt.Printf("Failed to read %s: %v\n", fname, err)
+					return
+				}
+			}()
+
+			buf.ReadFrom(pr)
 		} else {
-			contentLen += int64(len(d))
 			buf.Write([]byte(d))
 		}
 	}
 
-	return buf, contentLen
+	return buf, nil
 }
 
 // Request ...
 func Request(opt *option.Option) error {
 	client := newClient(opt)
 
-	body, length := makeBody(opt.Data)
+	body, err := makeBody(opt.Data)
+	if err != nil {
+		return err
+	}
 
 	req, err := nethttp.NewRequest(opt.Method, opt.URL.String(), body)
 	if err != nil {
 		return err
-	}
-	if length > 0 {
-		req.ContentLength = length
 	}
 	for _, header := range opt.Header {
 		d := strings.Split(header, ":")

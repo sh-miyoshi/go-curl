@@ -58,6 +58,7 @@ func makeBody(data []string) (io.Reader, error) {
 
 			go func() {
 				defer pw.Close()
+				defer f.Close()
 				if _, err := io.Copy(pw, f); err != nil {
 					fmt.Printf("Failed to read %s: %v\n", fname, err)
 					return

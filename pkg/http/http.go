@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -11,8 +12,7 @@ import (
 	"github.com/sh-miyoshi/go-curl/pkg/option"
 )
 
-// Request ...
-func Request(opt *option.Option) error {
+func newClient(opt *option.Option) *nethttp.Client {
 	tlsConf := tls.Config{}
 
 	if opt.Insecure {
@@ -34,14 +34,47 @@ func Request(opt *option.Option) error {
 		}
 	}
 
-	// TODO remove \r\n
-	// TODO set body
-	// get content-length
-	// use io.Pipe()
+	return client
+}
 
-	req, err := nethttp.NewRequest(opt.Method, opt.URL.String(), nil)
+func makeBody(data []string) (io.Reader, int64) {
+	if data == nil || len(data) == 0 {
+		return nil, 0
+	}
+
+	var contentLen int64
+	buf := new(bytes.Buffer)
+	for _, d := range data {
+		if d == "" {
+			continue
+		}
+		if d[0] == '@' {
+			// TODO remove \r\n
+			// get content-length
+			// use io.Pipe()
+			// read file
+			// TODO
+		} else {
+			contentLen += int64(len(d))
+			buf.Write([]byte(d))
+		}
+	}
+
+	return buf, contentLen
+}
+
+// Request ...
+func Request(opt *option.Option) error {
+	client := newClient(opt)
+
+	body, length := makeBody(opt.Data)
+
+	req, err := nethttp.NewRequest(opt.Method, opt.URL.String(), body)
 	if err != nil {
 		return err
+	}
+	if length > 0 {
+		req.ContentLength = length
 	}
 	for _, header := range opt.Header {
 		d := strings.Split(header, ":")
@@ -57,8 +90,6 @@ func Request(opt *option.Option) error {
 		return err
 	}
 	defer res.Body.Close()
-
-	var body io.Reader
 
 	// show result
 	writer := os.Stdout

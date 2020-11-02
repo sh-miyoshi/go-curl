@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sh-miyoshi/go-curl/pkg/file"
 	"github.com/sh-miyoshi/go-curl/pkg/option"
 )
 
@@ -48,9 +49,8 @@ func makeBody(data []string) (io.Reader, error) {
 			continue
 		}
 		if d[0] == '@' {
-			// TODO remove \r\n
 			fname := d[1:]
-			f, err := os.Open(fname)
+			reader, err := file.NewReader(fname, []byte{'\r', '\n'})
 			if err != nil {
 				return nil, err
 			}
@@ -58,8 +58,8 @@ func makeBody(data []string) (io.Reader, error) {
 
 			go func() {
 				defer pw.Close()
-				defer f.Close()
-				if _, err := io.Copy(pw, f); err != nil {
+				defer reader.Close()
+				if _, err := io.Copy(pw, reader); err != nil {
 					fmt.Printf("Failed to read %s: %v\n", fname, err)
 					return
 				}

@@ -38,13 +38,15 @@ func newClient(opt *option.Option) *nethttp.Client {
 	return client
 }
 
-func makeBody(data []string) (io.Reader, error) {
-	if data == nil || len(data) == 0 {
+func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, error) {
+	if len(dataASCII) == 0 && len(dataRaw) == 0 && len(dataBinary) == 0 && len(dataURL) == 0 {
 		return nil, nil
 	}
 
 	buf := new(bytes.Buffer)
-	for _, d := range data {
+	//var mu sync.Mutex
+
+	for _, d := range dataASCII {
 		if d == "" {
 			continue
 		}
@@ -71,6 +73,47 @@ func makeBody(data []string) (io.Reader, error) {
 		}
 	}
 
+	for _, d := range dataRaw {
+		if d == "" {
+			continue
+		}
+		buf.Write([]byte(d))
+	}
+
+	for _, d := range dataBinary {
+		if d == "" {
+			continue
+		}
+		if d[0] == '@' {
+			fname := d[1:]
+			fp, err := os.Open(fname)
+			if err != nil {
+				return nil, err
+			}
+			pr, pw := io.Pipe()
+
+			go func() {
+				defer pw.Close()
+				defer fp.Close()
+				if _, err := io.Copy(pw, fp); err != nil {
+					fmt.Printf("Failed to read %s: %v\n", fname, err)
+					return
+				}
+			}()
+
+			buf.ReadFrom(pr)
+		} else {
+			buf.Write([]byte(d))
+		}
+	}
+
+	for _, d := range dataURL {
+		if d == "" {
+			continue
+		}
+		// TODO implement this
+	}
+
 	return buf, nil
 }
 
@@ -78,7 +121,7 @@ func makeBody(data []string) (io.Reader, error) {
 func Request(opt *option.Option) error {
 	client := newClient(opt)
 
-	body, err := makeBody(opt.Data)
+	body, err := makeBody(opt.DataASCII, opt.DataRaw, opt.DataBinary, opt.DataURL)
 	if err != nil {
 		return err
 	}

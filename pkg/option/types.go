@@ -7,13 +7,16 @@ import (
 
 // Option ...
 type Option struct {
-	Method   string
-	Data     []string
-	Header   []string
-	Insecure bool
-	Redirect bool
-	Silent   bool
-	Output   string
+	Method     string
+	Header     []string
+	Insecure   bool
+	Redirect   bool
+	Silent     bool
+	Output     string
+	DataASCII  []string
+	DataRaw    []string
+	DataBinary []string
+	DataURL    []string
 
 	URL url.URL
 }

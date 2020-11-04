@@ -159,7 +159,6 @@ func Request(opt *option.Option) error {
 	body = res.Body
 
 	if opt.Output != "" {
-		// TODO /dev/null, NUL
 		// Output to file
 		var err error
 		writer, err = os.Create(opt.Output)

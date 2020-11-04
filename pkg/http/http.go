@@ -54,80 +54,73 @@ func pipeRead(buf *bytes.Buffer, reader io.ReadCloser) {
 	buf.ReadFrom(pr)
 }
 
-func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, error) {
-	if len(dataASCII) == 0 && len(dataRaw) == 0 && len(dataBinary) == 0 && len(dataURL) == 0 {
+func makeBody(data []option.Data) (io.Reader, error) {
+	if len(data) == 0 {
 		return nil, nil
 	}
 
 	buf := new(bytes.Buffer)
 
-	for _, d := range dataASCII {
-		if d == "" {
+	for _, d := range data {
+		if d.Value == "" {
 			continue
 		}
-		if d[0] == '@' {
-			fname := d[1:]
-			reader, err := file.NewReader(fname, []byte{'\r', '\n'})
-			if err != nil {
-				return nil, err
-			}
-			pipeRead(buf, reader)
-		} else {
-			buf.Write([]byte(d))
-		}
-	}
 
-	for _, d := range dataRaw {
-		if d == "" {
-			continue
-		}
-		buf.Write([]byte(d))
-	}
+		writeDirect := false
+		switch d.Type {
+		case option.DataASCII:
+			if d.Value[0] == '@' {
+				writeDirect = false
+				fname := d.Value[1:]
+				reader, err := file.NewReader(fname, []byte{'\r', '\n'})
+				if err != nil {
+					return nil, err
+				}
+				pipeRead(buf, reader)
+			}
+		case option.DataRaw:
+		case option.DataBinary:
+			if d.Value[0] == '@' {
+				writeDirect = false
+				fname := d.Value[1:]
+				fp, err := os.Open(fname)
+				if err != nil {
+					return nil, err
+				}
+				pipeRead(buf, fp)
+			}
+		case option.DataURL:
+			writeDirect = false
+			if index := strings.Index(d.Value, "@"); index >= 0 {
+				// format @filename or name@filename
+				if index != 0 {
+					buf.Write([]byte(d.Value[:index]))
+				}
 
-	for _, d := range dataBinary {
-		if d == "" {
-			continue
-		}
-		if d[0] == '@' {
-			fname := d[1:]
-			fp, err := os.Open(fname)
-			if err != nil {
-				return nil, err
+				fname := d.Value[index+1:]
+				fp, err := os.Open(fname)
+				if err != nil {
+					return nil, err
+				}
+				pipeRead(buf, fp)
+			} else if index := strings.Index(d.Value, "="); index >= 0 {
+				// format =content or name=content
+				content := url.QueryEscape(d.Value[index+1:])
+				if index != 0 {
+					buf.Write([]byte(d.Value[:index+1]))
+				}
+				buf.Write([]byte(content))
+			} else {
+				// format content
+				content := url.QueryEscape(d.Value)
+				buf.Write([]byte(content))
 			}
-			pipeRead(buf, fp)
-		} else {
-			buf.Write([]byte(d))
 		}
-	}
 
-	for _, d := range dataURL {
-		if d == "" {
-			continue
+		if writeDirect {
+			buf.Write([]byte(d.Value))
 		}
-		if index := strings.Index(d, "@"); index >= 0 {
-			// format @filename or name@filename
-			if index != 0 {
-				buf.Write([]byte(d[:index]))
-			}
 
-			fname := d[index+1:]
-			fp, err := os.Open(fname)
-			if err != nil {
-				return nil, err
-			}
-			pipeRead(buf, fp)
-		} else if index := strings.Index(d, "="); index >= 0 {
-			// format =content or name=content
-			content := url.QueryEscape(d[index+1:])
-			if index != 0 {
-				buf.Write([]byte(d[:index+1]))
-			}
-			buf.Write([]byte(content))
-		} else {
-			// format content
-			content := url.QueryEscape(d)
-			buf.Write([]byte(content))
-		}
 	}
 
 	return buf, nil
@@ -137,7 +130,7 @@ func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, erro
 func Request(opt *option.Option) error {
 	client := newClient(opt)
 
-	body, err := makeBody(opt.DataASCII, opt.DataRaw, opt.DataBinary, opt.DataURL)
+	body, err := makeBody(opt.Data)
 	if err != nil {
 		return err
 	}

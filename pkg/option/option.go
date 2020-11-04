@@ -27,6 +27,7 @@ func getURL() (*url.URL, error) {
 func Init() (*Option, error) {
 	opt := &Option{}
 	help := false
+	version := false
 	var data []string
 	var dataASCII []string
 	var dataRaw []string
@@ -34,6 +35,7 @@ func Init() (*Option, error) {
 	var dataURL []string
 
 	pflag.BoolVarP(&help, "help", "h", false, "Show help message")
+	pflag.BoolVarP(&version, "version", "V", false, "Show version number and quit")
 	pflag.StringVarP(&opt.Method, "request", "X", "", "Specify request command to use")
 	pflag.StringArrayVarP(&opt.Header, "header", "H", nil, "Pass custom header(s) to server")
 	pflag.BoolVarP(&opt.Insecure, "insecure", "k", false, "Allow insecure server connections when using SSL")
@@ -50,6 +52,10 @@ func Init() (*Option, error) {
 
 	if help {
 		return nil, ErrHelp
+	}
+
+	if version {
+		return nil, ErrVersion
 	}
 
 	for _, d := range data {

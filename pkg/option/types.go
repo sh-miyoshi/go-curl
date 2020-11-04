@@ -41,4 +41,6 @@ type Option struct {
 var (
 	// ErrHelp ...
 	ErrHelp = errors.New("show help")
+	// ErrVersion ...
+	ErrVersion = errors.New("show version")
 )

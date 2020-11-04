@@ -52,6 +52,8 @@ func Init() (*Option, error) {
 		opt.DataASCII = append(opt.DataASCII, d)
 	}
 
+	// TODO if data is not empty, default request type is POST
+
 	u, err := getURL()
 	if err != nil {
 		return nil, err

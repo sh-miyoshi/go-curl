@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	nethttp "net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -38,13 +39,27 @@ func newClient(opt *option.Option) *nethttp.Client {
 	return client
 }
 
+func pipeRead(buf *bytes.Buffer, reader io.ReadCloser) {
+	pr, pw := io.Pipe()
+
+	go func() {
+		defer pw.Close()
+		defer reader.Close()
+		if _, err := io.Copy(pw, reader); err != nil {
+			fmt.Printf("Failed to read from reader: %v\n", err)
+			return
+		}
+	}()
+
+	buf.ReadFrom(pr)
+}
+
 func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, error) {
 	if len(dataASCII) == 0 && len(dataRaw) == 0 && len(dataBinary) == 0 && len(dataURL) == 0 {
 		return nil, nil
 	}
 
 	buf := new(bytes.Buffer)
-	//var mu sync.Mutex
 
 	for _, d := range dataASCII {
 		if d == "" {
@@ -56,18 +71,7 @@ func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, erro
 			if err != nil {
 				return nil, err
 			}
-			pr, pw := io.Pipe()
-
-			go func() {
-				defer pw.Close()
-				defer reader.Close()
-				if _, err := io.Copy(pw, reader); err != nil {
-					fmt.Printf("Failed to read %s: %v\n", fname, err)
-					return
-				}
-			}()
-
-			buf.ReadFrom(pr)
+			pipeRead(buf, reader)
 		} else {
 			buf.Write([]byte(d))
 		}
@@ -90,18 +94,7 @@ func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, erro
 			if err != nil {
 				return nil, err
 			}
-			pr, pw := io.Pipe()
-
-			go func() {
-				defer pw.Close()
-				defer fp.Close()
-				if _, err := io.Copy(pw, fp); err != nil {
-					fmt.Printf("Failed to read %s: %v\n", fname, err)
-					return
-				}
-			}()
-
-			buf.ReadFrom(pr)
+			pipeRead(buf, fp)
 		} else {
 			buf.Write([]byte(d))
 		}
@@ -111,7 +104,30 @@ func makeBody(dataASCII, dataRaw, dataBinary, dataURL []string) (io.Reader, erro
 		if d == "" {
 			continue
 		}
-		// TODO implement this
+		if index := strings.Index(d, "@"); index >= 0 {
+			// format @filename or name@filename
+			if index != 0 {
+				buf.Write([]byte(d[:index]))
+			}
+
+			fname := d[index+1:]
+			fp, err := os.Open(fname)
+			if err != nil {
+				return nil, err
+			}
+			pipeRead(buf, fp)
+		} else if index := strings.Index(d, "="); index >= 0 {
+			// format =content or name=content
+			content := url.QueryEscape(d[index+1:])
+			if index != 0 {
+				buf.Write([]byte(d[:index+1]))
+			}
+			buf.Write([]byte(content))
+		} else {
+			// format content
+			content := url.QueryEscape(d)
+			buf.Write([]byte(content))
+		}
 	}
 
 	return buf, nil

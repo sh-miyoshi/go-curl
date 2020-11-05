@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/sh-miyoshi/go-curl/pkg/file"
 	"github.com/sh-miyoshi/go-curl/pkg/option"
@@ -66,7 +67,7 @@ func makeBody(data []option.Data) (io.Reader, error) {
 			continue
 		}
 
-		writeDirect := false
+		writeDirect := true
 		switch d.Type {
 		case option.DataASCII:
 			if d.Value[0] == '@' {
@@ -126,6 +127,18 @@ func makeBody(data []option.Data) (io.Reader, error) {
 	return buf, nil
 }
 
+func showRequest(req *nethttp.Request) {
+	fmt.Printf("> %s %s %s\n", req.Method, req.URL.Path, req.Proto)
+	fmt.Printf("> %s\n", req.Host)
+	fmt.Printf("> Content-Length: %d\n", req.ContentLength)
+}
+
+func showResponse(res *nethttp.Response) {
+	fmt.Printf("< %s %d %s\n", res.Proto, res.StatusCode, res.Status)
+	fmt.Printf("< Date: %s\n", time.Now().Format(time.RFC3339))
+	fmt.Printf("< Content-Length: %d\n", res.ContentLength)
+}
+
 // Request ...
 func Request(opt *option.Option) error {
 	client := newClient(opt)
@@ -140,6 +153,8 @@ func Request(opt *option.Option) error {
 		return err
 	}
 	for _, header := range opt.Header {
+		// TODO support @filename, and empty value
+
 		d := strings.Split(header, ":")
 		if len(d) != 2 {
 			return fmt.Errorf("Invalid header data: %s", header)
@@ -147,12 +162,17 @@ func Request(opt *option.Option) error {
 		req.Header.Add(strings.Trim(d[0], " "), strings.Trim(d[1], " "))
 	}
 
-	// TODO dump request dump, _ := httputil.DumpRequest(req, false)
+	showRequest(req)
+	fmt.Println("Request sent ...")
+
 	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
+
+	showResponse(res)
+	fmt.Println("Got response ...")
 
 	// show result
 	writer := os.Stdout

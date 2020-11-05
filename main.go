@@ -33,8 +33,6 @@ func main() {
 		return
 	}
 
-	// TODO vaildate opt
-
 	if err := http.Request(opt); err != nil {
 		fmt.Printf("Failed to request server: %v", err)
 	}

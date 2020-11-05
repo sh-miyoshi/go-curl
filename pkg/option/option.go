@@ -47,6 +47,7 @@ func Init() (*Option, error) {
 	pflag.StringArrayVar(&dataRaw, "data-raw", []string{}, "HTTP POST data, '@' allowed")
 	pflag.StringArrayVar(&dataBinary, "data-binary", []string{}, "HTTP POST binary data")
 	pflag.StringArrayVar(&dataURL, "data-urlencode", []string{}, "HTTP POST data url encoded")
+	pflag.BoolVarP(&opt.Verbose, "verbose", "v", false, "Make the operation more talkative")
 
 	pflag.Parse()
 

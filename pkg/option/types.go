@@ -34,6 +34,7 @@ type Option struct {
 	Silent   bool
 	Output   string
 	Data     []Data
+	Verbose  bool
 
 	URL url.URL
 }

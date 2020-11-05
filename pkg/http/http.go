@@ -162,8 +162,10 @@ func Request(opt *option.Option) error {
 		req.Header.Add(strings.Trim(d[0], " "), strings.Trim(d[1], " "))
 	}
 
-	showRequest(req)
-	fmt.Println("Request sent ...")
+	if opt.Verbose {
+		showRequest(req)
+		fmt.Println("Request sent ...")
+	}
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -171,8 +173,10 @@ func Request(opt *option.Option) error {
 	}
 	defer res.Body.Close()
 
-	showResponse(res)
-	fmt.Println("Got response ...")
+	if opt.Verbose {
+		showResponse(res)
+		fmt.Println("Got response ...")
+	}
 
 	// show result
 	writer := os.Stdout

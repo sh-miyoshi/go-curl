@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"fmt"
@@ -53,6 +54,49 @@ func pipeRead(buf *bytes.Buffer, reader io.ReadCloser) {
 	}()
 
 	buf.ReadFrom(pr)
+}
+
+func setHeaders(header nethttp.Header, rawData []string) error {
+	hs := []string{}
+	for _, h := range rawData {
+
+		if h[0] == '@' {
+			// read from file
+			fp, err := os.Open(h[1:])
+			if err != nil {
+				return err
+			}
+			defer fp.Close()
+
+			scanner := bufio.NewScanner(fp)
+			for scanner.Scan() {
+				hs = append(hs, scanner.Text())
+			}
+		} else {
+			hs = append(hs, h)
+		}
+	}
+
+	for _, h := range hs {
+		d := strings.Split(h, ":")
+		if len(d) == 1 {
+			// check empty value
+			if h[len(h)-1:] == ";" {
+				header.Add(h[:len(h)-1], "")
+				continue
+			}
+			return fmt.Errorf("Invalid header data: %s", h)
+		}
+
+		key := d[0]
+		value := ""
+		for i := 1; i < len(d); i++ {
+			value += d[i]
+		}
+		header.Add(key, value)
+	}
+
+	return nil
 }
 
 func makeBody(data []option.Data) (io.Reader, error) {
@@ -130,12 +174,18 @@ func makeBody(data []option.Data) (io.Reader, error) {
 func showRequest(req *nethttp.Request) {
 	fmt.Printf("> %s %s %s\n", req.Method, req.URL.Path, req.Proto)
 	fmt.Printf("> %s\n", req.Host)
+	for key, value := range req.Header {
+		fmt.Printf("> %s: %v\n", key, value)
+	}
 	fmt.Printf("> Content-Length: %d\n", req.ContentLength)
 }
 
 func showResponse(res *nethttp.Response) {
 	fmt.Printf("< %s %d %s\n", res.Proto, res.StatusCode, res.Status)
 	fmt.Printf("< Date: %s\n", time.Now().Format(time.RFC3339))
+	for key, value := range res.Header {
+		fmt.Printf("< %s: %v\n", key, value)
+	}
 	fmt.Printf("< Content-Length: %d\n", res.ContentLength)
 }
 
@@ -152,14 +202,8 @@ func Request(opt *option.Option) error {
 	if err != nil {
 		return err
 	}
-	for _, header := range opt.Header {
-		// TODO support @filename, and empty value
-
-		d := strings.Split(header, ":")
-		if len(d) != 2 {
-			return fmt.Errorf("Invalid header data: %s", header)
-		}
-		req.Header.Add(strings.Trim(d[0], " "), strings.Trim(d[1], " "))
+	if err := setHeaders(req.Header, opt.Header); err != nil {
+		return err
 	}
 
 	if opt.Verbose {
